@@ -1,0 +1,265 @@
+openapi: 3.0.0
+info:
+  title: COVID-19 Attestation
+  description: >
+    Documentation of COVID-19 Attestation APIs.
+    This is a re-implementation of the https://media.interieur.gouv.fr/deplacement-covid-19/ website as a REST-API.
+    There is no database, no data storage, just a PDF generated on the fly.
+  version: 1.0.0
+servers:
+  - url: https://covid-attestation-api.herokuapp.com/api/v1
+paths:
+  /docs/generate:
+    post:
+      summary: Generate a COVID-19 "Attestation"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateDocInput'
+      responses:
+        '200':
+          description: The generated document
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        default:
+          $ref: '#/components/responses/GenericError'
+
+components:
+  schemas:
+
+    GenerateDocInput:
+      title: DocInput
+      type: object
+      properties:
+        firstname:
+          title: Your firstname
+          type: string
+          example: 'John'
+        lastname:
+          title: Your lastname
+          type: string
+          example: 'Doe'
+        birthDate:
+          title: Your birthdate
+          type: string
+          format: date
+          example: '1980-11-29'
+        birthPlace:
+          title: Your birthplace
+          type: string
+          example: 'Lille'
+        city:
+          title: Your current city
+          type: string
+          example: 'Paris'
+        postalCode:
+          title: Your current postal code
+          type: string
+          example: '75001'
+        address:
+          title: Your current address (number and street)
+          type: string
+          example: '1 rue Rivoli'
+        exitDateTime:
+          title: The date and time when you want to go out
+          type: string
+          format: datetime
+          example: '2020-11-02T14:00:00+01:00'
+        reasons:
+          type: array
+          items:
+            type: string
+            enum:
+              - WORK
+              - SHOPPING
+              - HEALTH
+              - FAMILY
+              - DISABILITY
+              - SPORT_ANIMALS
+              - CONVOCATION
+              - MISSIONS
+              - CHILDREN
+          example: [ WORK, CHILDREN ]
+          description: >
+            Details:
+              * **WORK** - Déplacements entre le domicile et le lieu d’exercice de l’activité professionnelle ou un établissement d’enseignement ou de formation, déplacements professionnels ne pouvant être différés, déplacements pour un concours ou un examen.
+              * **SHOPPING** - Déplacements pour effectuer des achats de fournitures nécessaires à l'activité professionnelle, des achats de première nécessité dans des établissements dont les activités demeurent autorisées, le retrait de commande et les livraisons à domicile.
+              * **HEALTH** - Consultations, examens et soins ne pouvant être assurés à distance et l’achat de médicaments.
+              * **FAMILY** - Déplacements pour motif familial impérieux, pour l'assistance aux personnes vulnérables et précaires ou la garde d'enfants.
+              * **DISABILITY** - Déplacement des personnes en situation de handicap et leur accompagnant.
+              * **SPORT_ANIMALS** - Déplacements brefs, dans la limite d'une heure quotidienne et dans un rayon maximal d'un kilomètre autour du domicile, liés soit à l'activité physique individuelle des personnes, à l'exclusion de toute pratique sportive collective et de toute proximité avec d'autres personnes, soit à la promenade avec les seules personnes regroupées dans un même domicile, soit aux besoins des animaux de compagnie.
+              * **CONVOCATION** - Convocation judiciaire ou administrative et pour se rendre dans un service public.
+              * **MISSIONS** - Participation à des missions d'intérêt général sur demande de l'autorité administrative.
+              * **CHILDREN** - Déplacement pour chercher les enfants à l’école et à l’occasion de leurs activités périscolaires.
+
+    #-----------------------------
+    # PAGINATION
+    #-----------------------------
+    PaginatedResource:
+      title: Pagination properties
+      type: object
+      properties:
+        offset:
+          title: Pagination offset
+          type: integer
+          example: 20
+        limit:
+          title: Pagination limit
+          type: integer
+          example: 10
+        total:
+          title: Total result count for resource
+          type: integer
+          example: 250
+    #-----------------------------
+    # ERRORS
+    #-----------------------------
+    Error:
+      properties:
+        status:
+          type: integer
+          example: 500
+        code:
+          type: string
+          example: some.error.code
+        message:
+          type: string
+          example: Internal Server Error
+        description:
+          type: string
+          example: Functional error message
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+        global_errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+        service:
+          type: string
+          example: 'my-api : POST /api/customers'
+        timestamp:
+          type: string
+          format: date-time
+          example: '2018-03-27T15:45:52.256+0000'
+    ValidationError:
+      type: object
+      properties:
+        code:
+          type: string
+        field:
+          type: string
+        message:
+          type: string
+    Unauthorized:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            status:
+              example: 401
+            code:
+              example: error.unauthorized
+            message:
+              example: Unauthorized (JWT not valid).
+    Forbidden:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            status:
+              example: 403
+            code:
+              example: error.access_denied
+            message:
+              example: Forbidden (doesn't have the valid scope).
+    NotFoundError:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            status:
+              example: 404
+            code:
+              example: error.not_found
+            message:
+              example: Not Found
+    BadRequest:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            status:
+              example: 400
+            code:
+              example: error.invalid.post_body
+            message:
+              example: Bad Request
+            errors:
+              example:
+                - code: error.missing.company
+                  field: company
+                  message: must not be null
+    FunctionalError:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            status:
+              example: 422
+            code:
+              example: error.spectator.create.conflict
+            message:
+              example: Spectator can't be created because there is already a user with this email
+
+  #-------------------------------
+  # Reusable responses
+  #-------------------------------
+  responses:
+    204NoContent:
+      description: No Content
+    GenericError:
+      description: Unexpected error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    404NotFound:
+      description: The specified resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/NotFoundError'
+    401Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Unauthorized'
+    403Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Forbidden'
+    400BadRequest:
+      description: The request could not be understood by the server due to malformed syntax
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/BadRequest'
+    422UnprocessableEntity:
+      description: There has been a functionnal error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/FunctionalError'
+

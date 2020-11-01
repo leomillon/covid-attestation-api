@@ -1,0 +1,9 @@
+spring:
+  jackson:
+    default-property-inclusion: non_absent
+    deserialization:
+      adjust_dates_to_context_time_zone: false
+      accept_single_value_as_array: true
+    serialization:
+      fail_on_empty_beans: false
+      write_dates_as_timestamps: false
