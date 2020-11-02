@@ -5,6 +5,8 @@ info:
     Documentation of COVID-19 Attestation APIs.
     This is a re-implementation of the https://media.interieur.gouv.fr/deplacement-covid-19/ website as a REST-API.
     There is no database, no data storage, just a PDF generated on the fly.
+  contact:
+    url: https://github.com/leomillon/covid-attestation-api
   version: 1.0.0
 servers:
   - url: https://covid-attestation-api.herokuapp.com/api/v1
